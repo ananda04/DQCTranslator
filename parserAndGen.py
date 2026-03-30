@@ -1,17 +1,29 @@
+### DSL and translation for AWG control
+### Designed by Arnav Nanda, Duke University Quantum Center, 2026-March
+### This module provides functionality to parse a custom DSL for AWG waveform generation and translate it into SCPI commands. It also includes utilities for generating arbitrary waveforms, normalizing them, and saving/loading waveform data.
+### The DSL supports various waveform types (sine, triangle, square, noise, exponential, decay, sawtooth, ramp, pulse) with parameters for frequency, amplitude, offset, and phase. The generated SCPI commands can be sent to an AWG instrument for waveform generation.
+### Example usage:
+### 1. Compile a DSL file into SCPI commands:
+###    scpi_commands = compileFile("waveforms.dsl")
+### 2. Run the compiled SCPI commands on an instrument:
+###    run_scpi_file("waveforms.dsl.cache.json", instrument)
+### DSL command format: <WAVEFORM_TYPE>-<FREQUENCY>-<AMPLITUDE>-<OFFSET>[-<PHASE>]
+### For arbitrary waveforms, the command format is: <ARB_WAVEFORM_TYPE>-<FREQUENCY>-<AMPLITUDE>-<OFFSET>[-<PHASE>]
+### To add/mult/div/subtract two arbitrary waveforms: <WAVEFORM1> <OPERATION> <WAVEFORM2>
+### DSL changes to add +, -, *, / operations for arbitrary waveforms:
+### Example: ARB-SINE-1kHz-1V-0V#+#ARB-TRI-500Hz-0.5V-0V
+
+
+
+
+
+
 from dataclasses import dataclass
 import json
 import numpy as np 
 
 WAVEFORM_MAP = {
-    "ARB-SINE": "ARB-SINE",
-    "ARB-TRI": "ARB-TRI",
-    "ARB-SQUARE": "ARB-SQUARE",
-    "ARB-NOISE": "ARB-NOISE",
-    "ARB-EXP": "ARB-EXP",
-    "ARB-DECAY": "ARB-DECAY",
-    "ARB-SAW": "ARB-SAW",
-    "ARB-RAMP": "ARB-RAMP",
-    "ARB-PULSE": "ARB-PULSE",
+    "ARB": "ARB",
     "SINE": "SIN",
     "TRI": "TRI",
     "SQUARE": "SQU"
@@ -97,10 +109,14 @@ def parse_command(cmd: str) -> WaveformCommand:
 
     if not -360 <= phase <= 360:
         raise ValueError("Phase must be between -360 and 360.")
-
+    if parts[0].startswith("ARB"):
+        wf = parts[0][4:].upper()  # Extract the base waveform type for ARB commands
+        if wf not in WAVEFORM_MAP:
+            raise ValueError(f"Unsupported ARB waveform type: {wf}")
+    
     return WaveformCommand(wf, freq, amp, offset, phase)
 
-def generate_ARBMEM(cmd: WaveformCommand, sample_rate=1e9, duration=1e-3):
+def generate_ARBMEM(cmd: str, sample_rate=1e9, duration=1e-3):
     """    
     :param cmd: parsed WaveformCommand
     :type cmd: WaveformCommand
@@ -112,53 +128,40 @@ def generate_ARBMEM(cmd: WaveformCommand, sample_rate=1e9, duration=1e-3):
     Returns:
         np.ndarray: Array of samples representing the arbitrary waveform.
     """
-
-    def operations_ARB(waveform1, waveform2, operation):
-        if operation == "add":
-            if len(waveform1) != len(waveform2):
-                if
-                raise ValueError("Waveforms must have the same length for addition.")
-            return waveform1 + waveform2
-        elif operation == "subtract":
-            if len(waveform1) != len(waveform2):
-                raise ValueError("Waveforms must have the same length for subtraction.")
-            return waveform1 - waveform2
-        elif operation == "multiply":
-            if len(waveform1) != len(waveform2):
-                raise ValueError("Waveforms must have the same length for multiplication.")
-            return waveform1 * waveform2
-        elif operation == "divide":
-            if len(waveform1) != len(waveform2):
-                raise ValueError("Waveforms must have the same length for division.")
-            with np.errstate(divide='ignore', invalid='ignore'):
-                result = np.true_divide(waveform1, waveform2)
-                result[~np.isfinite(result)] = 0  # Set inf and NaN to 0
-                return result
-        else:
-            raise ValueError(f"Unsupported operation: {operation}")
-        t = np.arange(0, duration, 1/sample_rate)
-        return result
+    # parse the commnad to get the waveform parameters
+    cmd = parse_command(cmd)
+    # we need to check for the ARB( prefix before generating the waveform --> this allows us to determine if we need to generate an arbitrary wave form / or do some operation on multiple waveforms
     
-    if cmd.type == "ARB-SINE":
+    if cmd.type == "SIN":
         ARB-SINE =np.array(cmd.amplitude * np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase)) + cmd.offset)
-    elif cmd.type == "ARB-TRI":
+        return ARB-SINE
+    elif cmd.type == "TRI":
         ARB-TRI =np.array(cmd.amplitude * (2 * np.abs(2 * (t * cmd.frequency - np.floor(t * cmd.frequency + 0.5))) - 1) + cmd.offset)
-    elif cmd.type == "ARB-SQUARE":
+        return ARB-TRI
+    elif cmd.type == "SQU":
         ARB-SQUARE =np.array(cmd.amplitude * np.sign(np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase))) + cmd.offset)
-    elif cmd.type == "ARB-NOISE":
+        return ARB-SQUARE
+    elif cmd.type == "NOI":
         ARB-NOISE =np.array(cmd.amplitude * np.random.normal(0, 1, len(t)) + cmd.offset)
-    elif cmd.type == "ARB-EXP":
+        return ARB-NOISE
+    elif cmd.type == "EXP":
         ARB-EXP =np.array(cmd.amplitude * (1 - np.exp(-t * cmd.frequency)) + cmd.offset)
-    elif cmd.type == "ARB-DECAY":
+        return ARB-EXP
+    elif cmd.type == "DEC":
         ARB-DECAY =np.array(cmd.amplitude * np.exp(-t * cmd.frequency) + cmd.offset)
-    elif cmd.type == "ARB-SAW":
+        return ARB-DECAY
+    elif cmd.type == "SAW":
         ARB-SAW =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
-    elif cmd.type == "ARB-RAMP":
+        return ARB-SAW
+    elif cmd.type == "RAM":
         ARB-RAMP =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
-    elif cmd.type == "ARB-PULSE":
+        return ARB-RAMP
+    elif cmd.type == "PUL":
         ARB-PULSE =np.array(cmd.amplitude * (np.where((t % (1/cmd.frequency)) < (0.5/cmd.frequency), 1, 0)) + cmd.offset)
+        return ARB-PULSE
     else:
         raise ValueError(f"Unsupported waveform type: {cmd.type}")
+    return None
    
 
 def normalize_waveform(waveform):
@@ -183,23 +186,30 @@ def concatenate_waveforms(waveforms):
     """
     return np.concatenate(waveforms)
 
-def save_waveform_to_file(waveform, filename):
-    """    
-    :param waveform: Array of samples representing the arbitrary waveform.
-    :type waveform: np.ndarray
-    :param filename: Name of the file to save the waveform data.
-    :type filename: str
-    """
-    np.savetxt(filename, waveform, delimiter=",")
-def load_waveform_from_file(filename):
-    """    
-    :param filename: Name of the file to load the waveform data from.
-    :type filename: str
+def waveform_arithemtic(cmd: str, waveforms: dict):
+   # This will parse the command and generate the necessary waveforms if they are not already generated
+   # need to run delimiters to get the two or more waveforms and the operation
+    parts = cmd.split()
+    if len(parts) < 2:
+        raise ValueError("Invalid command format for waveform arithmetic.")
+    generate_ARBMEM(cmd)  
+    # need to add support for order of operations and parentheses in the future
+    # for now we will just support two waveforms and one operation
+    wf1_name = parts[0]
+    operation = parts[1]
+    wf2_name = parts[2] 
 
-    Returns:
-        np.ndarray: Array of samples representing the arbitrary waveform.
-    """
-    return np.loadtxt(filename, delimiter=",")  
+    if operation == "+":
+        final = wf1 + wf2
+    elif operation == "-":
+        final = wf1 - wf2
+    elif operation == "*":
+        final = wf1 * wf2
+    elif operation == "/":
+        final = np.divide(wf1, wf2, out=np.zeros_like(wf1), where=wf2!=0)
+    else:
+        raise ValueError(f"Unsupported operation: {operation}")
+    return final
 
 def genSCPI(cmd: WaveformCommand, channel=1):
     """    
