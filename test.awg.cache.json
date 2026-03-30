@@ -1,0 +1,17 @@
+{
+  "source": "test.awg",
+  "commands": [
+    ":SOUR1:FUNC SIN",
+    ":SOUR1:FREQ 1000000.0",
+    ":SOUR1:VOLT 1.0",
+    ":SOUR1:VOLT:OFFS 0.0",
+    ":SOUR1:PHAS 0.0",
+    ":OUTP1 ON",
+    ":SOUR1:FUNC TRI",
+    ":SOUR1:FREQ 2000000.0",
+    ":SOUR1:VOLT 0.5",
+    ":SOUR1:VOLT:OFFS 0.0",
+    ":SOUR1:PHAS 0.0",
+    ":OUTP1 ON"
+  ]
+}
