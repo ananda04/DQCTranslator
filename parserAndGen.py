@@ -192,21 +192,22 @@ def waveform_arithemtic(cmd: str, waveforms: dict):
     parts = cmd.split()
     if len(parts) < 2:
         raise ValueError("Invalid command format for waveform arithmetic.")
-    generate_ARBMEM(cmd)  
     # need to add support for order of operations and parentheses in the future
     # for now we will just support two waveforms and one operation
-    wf1_name = parts[0]
+    wf1 = parts[0]
     operation = parts[1]
-    wf2_name = parts[2] 
+    wf2 = parts[2] 
+    waveform1 = generate_ARBMEM(wf1)  
+    waveform2 = generate_ARBMEM(wf2)  
 
     if operation == "+":
-        final = wf1 + wf2
+        final = waveform1 + waveform2
     elif operation == "-":
-        final = wf1 - wf2
+        final = waveform1 - waveform2       
     elif operation == "*":
-        final = wf1 * wf2
+        final = waveform1 * waveform2
     elif operation == "/":
-        final = np.divide(wf1, wf2, out=np.zeros_like(wf1), where=wf2!=0)
+        final = np.divide(waveform1, waveform2, out=np.zeros_like(waveform1), where=waveform2!=0)
     else:
         raise ValueError(f"Unsupported operation: {operation}")
     return final
