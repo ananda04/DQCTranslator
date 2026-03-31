@@ -90,9 +90,6 @@ def parse_command(cmd: str) -> WaveformCommand:
 
     ARB_check = parts[0].upper()
 
-    if wf not in WAVEFORM_MAP:
-        raise ValueError(f"Unsupported waveform type: {wf}")
-
     try:
         if ARB_check == "ARB":
             type = parts[1].upper()
@@ -104,15 +101,16 @@ def parse_command(cmd: str) -> WaveformCommand:
             offset1 = float(parts[4])
             phase1 = float(parts[5]) if len(parts) > 5 else 0.
             operation = parts[6]
-            type2 = parts[7].upper()
-            if type2 == "ARB":
+            ARB_check2 = parts[7].upper()
+            if ARB_check2 == "ARB":
+                type2 = parts[8].upper()
                 if type2 not in WAVEFORM_MAP:
                     raise ValueError(f"Unsupported arbitrary waveform type: {type2}")
                 wf2 = type2
-                freq2 = float(parts[8])
-                amp2 = float(parts[9])
-                offset2 = float(parts[10])
-                phase2 = float(parts[11]) if len(parts) > 11 else 0
+                freq2 = float(parts[9])
+                amp2 = float(parts[10])
+                offset2 = float(parts[11])
+                phase2 = float(parts[12]) if len(parts) > 12 else 0
             else:
                 wf2 = "NULL"
                 freq2 = 0
@@ -123,7 +121,7 @@ def parse_command(cmd: str) -> WaveformCommand:
             waveMem2 = generate_ARBMEM(WaveformCommand(wf2, freq2, amp2, offset2, phase2))
             finWaveform = waveform_arithemtic(waveMem1, waveMem2, operation)
             # flushing this out still, need to add support for more than 2 waveforms and multiple operations in the future
-            scpi_lines = genSCPI(WaveformCommand("ARB", 0, 0, 0, 0)) 
+            scpi_lines = genSCPI(waveform=finWaveform)
         else:
             wf = ARB_check
             if wf not in WAVEFORM_MAP:
@@ -133,17 +131,18 @@ def parse_command(cmd: str) -> WaveformCommand:
             offset = float(parts[3])
             phase = float(parts[4]) if len(parts) > 4 else 0.0
             scpi_lines = genSCPI(WaveformCommand(wf, freq, amp, offset, phase))
+            
     except ValueError as e:
         raise ValueError(f"Error parsing command: {e}")
 
-    if freq < 0:
-        raise ValueError("Frequency must be non-negative.")
+    # if freq < 0:
+    #     raise ValueError("Frequency must be non-negative.")
 
-    if amp < 0:
-        raise ValueError("Amplitude must be non-negative.")
+    # if amp < 0:
+    #     raise ValueError("Amplitude must be non-negative.")
 
-    if not -360 <= phase <= 360:
-        raise ValueError("Phase must be between -360 and 360.")
+    # if not -360 <= phase <= 360:
+    #     raise ValueError("Phase must be between -360 and 360.")
     
     return scpi_lines
 
@@ -158,34 +157,37 @@ def generate_ARBMEM(cmd: WaveformCommand, sample_rate=1e9, duration=1e-3):
 
     Returns:
         np.ndarray: Array of samples representing the arbitrary waveform.
-    """    
-    if cmd.type == "SIN":
-        ARB-SINE =np.array(cmd.amplitude * np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase)) + cmd.offset)
-        return ARB-SINE
+    """
+    samples = int(sample_rate * duration)
+    t = np.arange(samples) / sample_rate
+
+    if cmd.type == "SINE":
+        SINE = np.array(cmd.amplitude * np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase)) + cmd.offset)
+        return SINE
     elif cmd.type == "TRI":
-        ARB-TRI =np.array(cmd.amplitude * (2 * np.abs(2 * (t * cmd.frequency - np.floor(t * cmd.frequency + 0.5))) - 1) + cmd.offset)
-        return ARB-TRI
-    elif cmd.type == "SQU":
-        ARB-SQUARE =np.array(cmd.amplitude * np.sign(np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase))) + cmd.offset)
-        return ARB-SQUARE
-    elif cmd.type == "NOI":
-        ARB-NOISE =np.array(cmd.amplitude * np.random.normal(0, 1, len(t)) + cmd.offset)
-        return ARB-NOISE
+        TRI =np.array(cmd.amplitude * (2 * np.abs(2 * (t * cmd.frequency - np.floor(t * cmd.frequency + 0.5))) - 1) + cmd.offset)
+        return TRI
+    elif cmd.type == "SQUARE":
+        SQUARE =np.array(cmd.amplitude * np.sign(np.sin(2 * np.pi * cmd.frequency * t + np.radians(cmd.phase))) + cmd.offset)
+        return SQUARE
+    elif cmd.type == "NOISE":
+        NOISE =np.array(cmd.amplitude * np.random.normal(0, 1, len(t)) + cmd.offset)
+        return NOISE
     elif cmd.type == "EXP":
-        ARB-EXP =np.array(cmd.amplitude * (1 - np.exp(-t * cmd.frequency)) + cmd.offset)
-        return ARB-EXP
-    elif cmd.type == "DEC":
-        ARB-DECAY =np.array(cmd.amplitude * np.exp(-t * cmd.frequency) + cmd.offset)
-        return ARB-DECAY
+        EXP =np.array(cmd.amplitude * (1 - np.exp(-t * cmd.frequency)) + cmd.offset)
+        return EXP
+    elif cmd.type == "DECAY":
+        DECAY =np.array(cmd.amplitude * np.exp(-t * cmd.frequency) + cmd.offset)
+        return DECAY
     elif cmd.type == "SAW":
-        ARB-SAW =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
-        return ARB-SAW
-    elif cmd.type == "RAM":
-        ARB-RAMP =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
-        return ARB-RAMP
-    elif cmd.type == "PUL":
-        ARB-PULSE =np.array(cmd.amplitude * (np.where((t % (1/cmd.frequency)) < (0.5/cmd.frequency), 1, 0)) + cmd.offset)
-        return ARB-PULSE
+        SAW =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
+        return SAW
+    elif cmd.type == "RAMP":
+        RAMP =np.array(cmd.amplitude * (t * cmd.frequency - np.floor(t * cmd.frequency)) + cmd.offset)
+        return RAMP
+    elif cmd.type == "PULSE":
+        PULSE =np.array(cmd.amplitude * (np.where((t % (1/cmd.frequency)) < (0.5/cmd.frequency), 1, 0)) + cmd.offset)
+        return PULSE
     else:
         raise ValueError(f"Unsupported waveform type: {cmd.type}")
     return None
@@ -212,6 +214,8 @@ def concatenate_waveforms(waveforms):
         np.ndarray: Concatenated waveform array.
     """
     return 
+def waveform_to_dac(waveform):
+    return (waveform * 8191).astype(np.int16)
 
 def waveform_arithemtic(Waveform1, Waveform2, operation):
     # need to add support for order of operations and parentheses in the future
@@ -236,30 +240,73 @@ def waveform_arithemtic(Waveform1, Waveform2, operation):
     normFinal = normalize_waveform(final)
     return normFinal
 
-def genSCPI(cmd: WaveformCommand, channel=1):
-    """    
-    :param cmd: parsed WaveformCommand
-    :type cmd: WaveformCommand
-    :param channel: AWG output channel 
-    Returns: 
-        list[str]: List of SCPI command strings.
-    """
-    scpi_func = WAVEFORM_MAP[cmd.type]
+# def genSCPI(cmd: WaveformCommand, channel=1):
+#     """    
+#     :param cmd: parsed WaveformCommand
+#     :type cmd: WaveformCommand
+#     :param channel: AWG output channel 
+#     Returns: 
+#         list[str]: List of SCPI command strings.
+#     """
+#     scpi_func = WAVEFORM_MAP[cmd.type]
 
-    if scpi_func == "ARB":
+#     if scpi_func == "ARB":
+#         return [
+#             f":TRAC{channel}:DWID WPR",
+#             f":FUNC{channel}:MODE ARB",
+#             f":TRAC{channel}:DEL:ALL",
+#             f":TRAC{channel}:DEF 1,<length>,0",
+#             f":TRAC{channel}:DATA 1,0,<block>",
+#             f":TRAC{channel}:SEL 1",
+#             f":INIT:CONT{channel}:ENAB SELF",
+#             f":INIT:CONT{channel}:STAT ON",
+#             f":OUTP{channel} ON",
+#             f":INIT:IMM{channel}",
+#         ]
+#     else:
+#         return [
+#             f":SOUR{channel}:FUNC {scpi_func}",
+#             f":SOUR{channel}:FREQ {cmd.frequency}",
+#             f":SOUR{channel}:VOLT {cmd.amplitude}",
+#             f":SOUR{channel}:VOLT:OFFS {cmd.offset}",
+#             f":SOUR{channel}:PHAS {cmd.phase}",
+#             f":OUTP{channel} ON",
+#             f":INIT:IMM{channel}",
+#         ]
+    
+def genSCPI(cmd=None, waveform=None, channel=1):
+    """
+    Unified SCPI generator.
+
+    Either:
+    - cmd → standard waveform
+    - waveform → arbitrary waveform (numpy array)
+    """
+
+    # -------------------------
+    # ARB CASE
+    # -------------------------
+    if waveform is not None:
+        dac = waveform_to_dac(waveform)
+        length = len(dac)
+        data_str = ",".join(map(str, dac))
+
         return [
-            f":TRAC{channel}:DWID WPR",
-            f":FUNC{channel}:MODE ARB",
             f":TRAC{channel}:DEL:ALL",
-            f":TRAC{channel}:DEF 1,<length>,0",
-            f":TRAC{channel}:DATA 1,0,<block>",
+            f":TRAC{channel}:DEF 1,{length}",
+            f":TRAC{channel}:DATA 1,0,{data_str}",
             f":TRAC{channel}:SEL 1",
-            f":INIT:CONT{channel}:ENAB SELF",
-            f":INIT:CONT{channel}:STAT ON",
+            f":SOUR{channel}:FUNC:MODE ARB",
             f":OUTP{channel} ON",
             f":INIT:IMM{channel}",
         ]
-    else:
+
+    # -------------------------
+    # STANDARD CASE
+    # -------------------------
+    elif cmd is not None:
+        scpi_func = WAVEFORM_MAP[cmd.type]
+
         return [
             f":SOUR{channel}:FUNC {scpi_func}",
             f":SOUR{channel}:FREQ {cmd.frequency}",
@@ -269,5 +316,6 @@ def genSCPI(cmd: WaveformCommand, channel=1):
             f":OUTP{channel} ON",
             f":INIT:IMM{channel}",
         ]
-    
 
+    else:
+        raise ValueError("Either cmd or waveform must be provided")
