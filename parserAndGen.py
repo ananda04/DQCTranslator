@@ -87,8 +87,11 @@ def parse_command(cmd: str) -> WaveformCommand:
 
     if len(parts) < 4:
         raise ValueError("Invalid command format.")
+    
+    
 
     ARB_check = parts[0].upper()
+    
 
     try:
         if ARB_check == "ARB":
@@ -117,6 +120,14 @@ def parse_command(cmd: str) -> WaveformCommand:
                 amp2 = 0
                 offset2 = 0
                 phase2 = 0
+            # debug statements and assertions to verify parsing
+            assert freq1 > 0, "Frequency must be positive"
+            assert amp1 >= 0, "Amplitude must be non-negative"
+            assert operation in ["+", "-", "*", "/", "||"], "Unsupported operation"
+            assert phase1 >= 0 and phase1 < 360, "Phase must be in [0, 360)"
+            assert freq2 >= 0, "Frequency must be non-negative"
+            assert amp2 >= 0, "Amplitude must be non-negative"
+            assert phase2 >= 0 and phase2 < 360, "Phase must be between [0, 360)"
             waveMem1 = generate_ARBMEM(WaveformCommand(wf1, freq1, amp1, offset1, phase1)) 
             waveMem2 = generate_ARBMEM(WaveformCommand(wf2, freq2, amp2, offset2, phase2))
             finWaveform = waveform_arithemtic(waveMem1, waveMem2, operation)
@@ -130,19 +141,13 @@ def parse_command(cmd: str) -> WaveformCommand:
             amp = float(parts[2])
             offset = float(parts[3])
             phase = float(parts[4]) if len(parts) > 4 else 0.0
+            assert freq > 0, "Frequency must be positive"
+            assert amp >= 0, "Amplitude must be non-negative"
+            assert phase >= 0 and phase < 360, "Phase must be in [0, 360)"
             scpi_lines = genSCPI(WaveformCommand(wf, freq, amp, offset, phase))
             
     except ValueError as e:
         raise ValueError(f"Error parsing command: {e}")
-
-    # if freq < 0:
-    #     raise ValueError("Frequency must be non-negative.")
-
-    # if amp < 0:
-    #     raise ValueError("Amplitude must be non-negative.")
-
-    # if not -360 <= phase <= 360:
-    #     raise ValueError("Phase must be between -360 and 360.")
     
     return scpi_lines
 
