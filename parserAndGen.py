@@ -14,13 +14,11 @@
 ### Example: ARB-SINE-1kHz-1V-0V#+#ARB-TRI-500Hz-0.5V-0V
 
 
-
-
-
-
 from dataclasses import dataclass
 import json
 import numpy as np 
+import matplotlib.pyplot as plt
+
 
 WAVEFORM_MAP = {
     "NULL": "NULL",
@@ -131,6 +129,7 @@ def parse_command(cmd: str) -> WaveformCommand:
             waveMem1 = generate_ARBMEM(WaveformCommand(wf1, freq1, amp1, offset1, phase1)) 
             waveMem2 = generate_ARBMEM(WaveformCommand(wf2, freq2, amp2, offset2, phase2))
             finWaveform = waveform_arithemtic(waveMem1, waveMem2, operation)
+            plot_waveform(waveMem1, waveMem2, finWaveform, title="Combined Waveform")
             # flushing this out still, need to add support for more than 2 waveforms and multiple operations in the future
             scpi_lines = genSCPI(waveform=finWaveform)
         else:
@@ -150,6 +149,38 @@ def parse_command(cmd: str) -> WaveformCommand:
         raise ValueError(f"Error parsing command: {e}")
     
     return scpi_lines
+
+
+
+def plot_waveform(waveform1, waveform2, waveform3, sample_rate=1e9, title="Waveforms"):
+    samples = len(waveform1)
+    t = np.arange(samples) / sample_rate
+
+    fig, axs = plt.subplots(3, 1, sharex=True)
+
+    # Waveform 1
+    axs[0].plot(t, waveform1)
+    axs[0].set_title("Waveform 1")
+    axs[0].grid()
+
+    # Waveform 2
+    axs[1].plot(t, waveform2)
+    axs[1].set_title("Waveform 2")
+    axs[1].grid()
+
+    # Combined
+    axs[2].plot(t, waveform3)
+    axs[2].set_title("Combined Waveform")
+    axs[2].grid()
+
+    # Shared labels
+    fig.suptitle(title)
+    axs[2].set_xlabel("Time (s)")
+    for ax in axs:
+        ax.set_ylabel("Amplitude")
+
+    plt.tight_layout()
+    plt.show()
 
 def generate_ARBMEM(cmd: WaveformCommand, sample_rate=1e9, duration=1e-3):
     """    

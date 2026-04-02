@@ -28,7 +28,7 @@ class MockInstrument:
 def test_basic_waveform():
     print("\n[TEST] Basic SINE command")
 
-    scpi = parse_command("SINE-1e6-1-0")
+    scpi = parse_command("SINE-10000-1-0")
 
     assert isinstance(scpi, list)
     assert any("SOUR1:FREQ" in line for line in scpi)
@@ -44,7 +44,7 @@ def test_arb_generation():
 
     from parserAndGen import WaveformCommand
 
-    cmd = WaveformCommand("SINE", 1e6, 1.0, 0.0, 0.0)
+    cmd = WaveformCommand("SINE", 10000, 1.0, 0.0, 0.0)
 
     try:
         wave = generate_ARBMEM(cmd)
@@ -62,8 +62,8 @@ def test_waveform_arithmetic():
 
     t = np.linspace(0, 1e-6, 1024)
 
-    wave1 = np.sin(2 * np.pi * 1e6 * t)
-    wave2 = np.sin(2 * np.pi * 2e6 * t)
+    wave1 = np.sin(2 * np.pi * 10000 * t)
+    wave2 = np.sin(2 * np.pi * 20000 * t)
 
     added = waveform_arithemtic(wave1, wave2, "+")
     subbed = waveform_arithemtic(wave1, wave2, "-")
@@ -81,7 +81,7 @@ def test_waveform_arithmetic():
 def test_combined_expression():
     print("\n[TEST] Combined DSL expression")
 
-    cmd = "ARB-SINE-1e6-1-0-0-+-ARB-SINE-2e6-0.5-0-0"
+    cmd = "ARB-SINE-10000-1-0-0-+-ARB-SINE-20000-0.5-0-0"
     
     try:
         scpi = parse_command(cmd)
