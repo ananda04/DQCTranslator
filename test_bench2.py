@@ -106,7 +106,7 @@ SINE-1e6-1-0
 TRI-2e6-0.5-0
 
 # Arbitrary (will partially work)
-ARB-SINE-1e6-1-0-0-+-ARB-SINE-2e6-0.5-0-0
+ARB-SINE-10000-1-0-0-+-ARB-SINE-20000-0.5-0-0
 """)
 
     scpi = compileFile(filename)
