@@ -18,7 +18,12 @@ from dataclasses import dataclass
 import json
 import numpy as np 
 import matplotlib.pyplot as plt
+import pyvisa
+import logging
 
+#set up logging 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 WAVEFORM_MAP = {
     "NULL": "NULL",
@@ -45,11 +50,17 @@ def save_cache(scpi_lines, source_file):
     with open(source_file + ".cache.json", "w") as f:
         json.dump(cache, f, indent=2)
 
-def run_scpi_file(filename, instrument):
+def run_scpi_file(filename, resource = "TCPIP0::localhost::inst0::INSTR"):
     with open(filename, "r") as f:
         cache = json.load(f)        
+    rm = pyvisa.ResourceManager()
+    awg = rm.open_resource(resource, timeout=10000)
+    logger.info(f"Connected to: {idn}")
+    awg.write("*RST")
     for line in cache["commands"]:
-        instrument.write(line.strip())
+        awg.write(line)
+    logger.info("All commands executed")
+        
 
 def compileFile(filename: str, cache=True):
     compile_scpi = []
