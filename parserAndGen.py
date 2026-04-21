@@ -50,16 +50,48 @@ def save_cache(scpi_lines, source_file):
     with open(source_file + ".cache.json", "w") as f:
         json.dump(cache, f, indent=2)
 
+
+def connect(resource):
+        """Establish connection to M8190A"""
+        try:
+            logger.info(f"Connecting to M8190A at {resource}")
+            rm = pyvisa.ResourceManager()
+            awg = rm.open_resource(resource, timeout=10000)
+            
+            idn = awg.query("*IDN?").strip()
+            logger.info(f"Connected to: {idn}")
+            
+            awg.write("*RST")
+            connected = True
+            
+        except Exception as e:
+            logger.error(f"Failed to connect to M8190A: {e}")
+            connected = False
+            raise
+    
+def disconnect(self):
+    """Close connection to M8190A"""
+    if self.awg and self.connected:
+        try:
+            self.stop_all_outputs()
+            self.awg.close()
+            self.connected = False
+            logger.info("Disconnected from M8190A")
+        except Exception as e:
+            logger.error(f"Error during disconnect: {e}")
+
 def run_scpi_file(filename, resource = "TCPIP0::localhost::inst0::INSTR"):
     with open(filename, "r") as f:
         cache = json.load(f)        
-    rm = pyvisa.ResourceManager()
-    awg = rm.open_resource(resource, timeout=10000)
-    logger.info(f"Connected to: {resource}")
-    awg.write("*RST")
+    # rm = pyvisa.ResourceManager()
+    # awg = rm.open_resource(resource, timeout=10000)
+    # logger.info(f"Connected to: {resource}")
+    # awg.write("*RST")
+    connect(resource)
     for line in cache["commands"]:
         awg.write(line)
     logger.info("All commands executed")
+    disconnect()
         
 
 def compileFile(filename: str, cache=True):
