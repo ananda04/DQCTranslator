@@ -55,7 +55,7 @@ def run_scpi_file(filename, resource = "TCPIP0::localhost::inst0::INSTR"):
         cache = json.load(f)        
     rm = pyvisa.ResourceManager()
     awg = rm.open_resource(resource, timeout=10000)
-    logger.info(f"Connected to: {idn}")
+    logger.info(f"Connected to: {resource}")
     awg.write("*RST")
     for line in cache["commands"]:
         awg.write(line)
